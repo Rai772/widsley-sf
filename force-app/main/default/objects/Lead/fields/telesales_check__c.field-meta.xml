@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>telesales_check__c</fullName>
+    <label>電話営業業務を行なっているか？</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>はい</fullName>
+                <default>false</default>
+                <label>はい</label>
+            </value>
+            <value>
+                <fullName>いいえ</fullName>
+                <default>false</default>
+                <label>いいえ</label>
+            </value>
+            <value>
+                <fullName>現在検討中</fullName>
+                <default>false</default>
+                <label>現在検討中</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

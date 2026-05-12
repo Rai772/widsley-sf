@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>product__c</fullName>
+    <label>商材</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Comdesk Lead</fullName>
+                <default>false</default>
+                <label>Comdesk Lead</label>
+            </value>
+            <value>
+                <fullName>CRM連繫</fullName>
+                <default>false</default>
+                <label>CRM連繫</label>
+            </value>
+            <value>
+                <fullName>Salesforce連繫</fullName>
+                <default>false</default>
+                <label>Salesforce連繫</label>
+            </value>
+            <value>
+                <fullName>社用携帯CRM連繫</fullName>
+                <default>false</default>
+                <label>社用携帯CRM連繫</label>
+            </value>
+            <value>
+                <fullName>Comdesk Flat</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Comdesk Flat</label>
+            </value>
+            <value>
+                <fullName>SES</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>SES</label>
+            </value>
+            <value>
+                <fullName>受託</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>受託</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

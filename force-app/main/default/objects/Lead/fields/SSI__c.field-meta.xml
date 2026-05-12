@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SSI__c</fullName>
+    <label>SSI流入経路</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Widsleyから問い合わせ</fullName>
+                <default>false</default>
+                <label>Widsleyから問い合わせ</label>
+            </value>
+            <value>
+                <fullName>顧客側から問い合わせ</fullName>
+                <default>false</default>
+                <label>顧客側から問い合わせ</label>
+            </value>
+            <value>
+                <fullName>顧客紹介</fullName>
+                <default>false</default>
+                <label>顧客紹介</label>
+            </value>
+            <value>
+                <fullName>交流会</fullName>
+                <default>false</default>
+                <label>交流会</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TM_LeadCreatedDate__c</fullName>
+    <description>Salesforce The Model ダッシュボード項目</description>
+    <formula>DATEVALUE( CreatedDate )</formula>
+    <label>リード作成日</label>
+    <required>false</required>
+    <type>Date</type>
+</CustomField>
