@@ -4,17 +4,36 @@ public class LeadTriggerHandler {
         List<Lead> leadsToUpdate = new List<Lead>();
 
         for (Lead lead : newLeads) {
-
             Lead updatedLead = new Lead(Id = lead.Id);
             Boolean needsUpdate = false;
 
             // ─── ① いたずらチェック ───────────────────
             if (LeadFilterService.isSpam(lead)) {
-                String source = lead.first_touchpoint__c != null
-                    ? lead.first_touchpoint__c
-                    : '問い合わせ';
-                LeadFilterService.markAsSpam(updatedLead, source);
+                LeadFilterService.markAsSpam(updatedLead, lead.first_touchpoint__c);
                 needsUpdate = true;
+                leadsToUpdate.add(updatedLead);
+                continue;
+            }
+
+            // ─── ② 重複 / 再流入チェック ─────────────
+            Map<String, Object> dupResult = LeadFilterService.checkDuplicate(lead);
+            Boolean isDuplicate = (Boolean) dupResult.get('isDuplicate');
+            Boolean isReflow    = (Boolean) dupResult.get('isReflow');
+
+            if (isDuplicate || isReflow) {
+                String label = isDuplicate ? '重複' : '再流入';
+
+                // 新しいリードをアーカイブ
+                updatedLead.Status = 'アーカイブ';
+                needsUpdate = true;
+
+                // 既存リードの備考に追記
+                Lead existingLead = (Lead) dupResult.get('existingLead');
+                if (existingLead != null) {
+                    Lead existingToUpdate = new Lead(Id = existingLead.Id);
+                    LeadFilterService.appendRemarks(existingToUpdate, label);
+                    leadsToUpdate.add(existingToUpdate);
+                }
             }
 
             if (needsUpdate) {
