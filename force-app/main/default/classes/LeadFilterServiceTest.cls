@@ -3,6 +3,7 @@ public class LeadFilterServiceTest {
 
     @isTest
     static void testSpam_invalidPhone_aspic() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead lead = new Lead(
             LastName            = 'テスト',
             Company             = 'テスト会社',
@@ -18,6 +19,7 @@ public class LeadFilterServiceTest {
 
     @isTest
     static void testSpam_validPhone() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead lead = new Lead(
             LastName = 'テスト2',
             Company  = 'テスト会社',
@@ -31,6 +33,7 @@ public class LeadFilterServiceTest {
 
     @isTest
     static void testDuplicate_withinSixMonths() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead existing = new Lead(
             LastName           = '既存',
             Company            = '既存会社',
@@ -61,6 +64,7 @@ public class LeadFilterServiceTest {
 
     @isTest
     static void testReflow_overSixMonths() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead existing = new Lead(
             LastName           = '既存',
             Company            = '既存会社',
@@ -87,5 +91,58 @@ public class LeadFilterServiceTest {
         Lead existingResult = [SELECT Remarks__c FROM Lead WHERE Id = :existing.Id];
         System.assert(existingResult.Remarks__c != null);
         System.assert(existingResult.Remarks__c.contains('再流入'));
+    }
+
+    @isTest
+    static void testExistingCustomer() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
+    
+        Account acc = new Account(Name = 'テスト取引先');
+        insert acc;
+    
+        Contact con = new Contact(
+            LastName  = 'テスト',
+            AccountId = acc.Id,
+            Email     = 'existing@example.com',
+            Phone     = '09055555555'
+        );
+        insert con;
+    
+        Opportunity opp = new Opportunity(
+            Name       = 'テスト商談',
+            AccountId  = acc.Id,
+            Contact__c = con.Id,
+            StageName  = 'ISナーチャリング',
+            CloseDate  = Date.today()
+        );
+        insert opp;
+        opp.StageName = 'アポイント設定';
+        update opp;
+        opp.StageName = '商談実施';
+        update opp;
+        opp.StageName = '商談化';
+        update opp;
+        opp.StageName = '担当者合意';
+        update opp;
+        opp.StageName = '決裁者合意';
+        update opp;
+        opp.StageName = 'フォームの回収';
+        update opp;
+        opp.StageName = '成約';
+        update opp;
+    
+        Lead lead = new Lead(
+            LastName = '既存顧客',
+            Company  = 'テスト会社',
+            Email    = 'existing@example.com',
+            Phone    = '09066666666'
+        );
+    
+        Test.startTest();
+        insert lead;
+        Test.stopTest();
+    
+        Lead result = [SELECT IsExistingCustomer__c FROM Lead WHERE Id = :lead.Id];
+        System.assertEquals(true, result.IsExistingCustomer__c);
     }
 }

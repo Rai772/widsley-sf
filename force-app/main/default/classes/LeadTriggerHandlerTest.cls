@@ -3,6 +3,7 @@ public class LeadTriggerHandlerTest {
 
     @isTest
     static void testAfterInsert_spamLead_meetsmore() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead lead = new Lead(
             LastName            = 'スパムテスト',
             Company             = 'テスト会社',
@@ -10,7 +11,6 @@ public class LeadTriggerHandlerTest {
             Phone               = '123',
             first_touchpoint__c = 'ミツモア'
         );
-
         Test.startTest();
         insert lead;
         Test.stopTest();
@@ -22,13 +22,13 @@ public class LeadTriggerHandlerTest {
 
     @isTest
     static void testAfterInsert_validLead() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead lead = new Lead(
             LastName = '有効テスト',
             Company  = 'テスト会社',
             Email    = 'valid@example.com',
             Phone    = '09012345678'
         );
-
         Test.startTest();
         insert lead;
         Test.stopTest();
@@ -39,13 +39,13 @@ public class LeadTriggerHandlerTest {
 
     @isTest
     static void testAfterInsert_noTouchpoint() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
         Lead lead = new Lead(
             LastName = 'タッチポイントなし',
             Company  = 'テスト会社',
             Email    = 'notouchpoint@example.com',
             Phone    = '000'
         );
-
         Test.startTest();
         insert lead;
         Test.stopTest();
