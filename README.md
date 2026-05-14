@@ -13,7 +13,7 @@ LeadTrigger（after insert）
 　↓
 LeadTriggerHandler → LeadFilterService
 　├─ 既存顧客   → IsExistingCustomer__c=true → SFフローでCSへSlack通知
-　├─ 重複       → 新リードをアーカイブ・既存リード/取引先責任者の備考追記
+　├─ 重複       → 新リードをアーカイブ・既存リード/取引先責任者の備考追記・Slack通知
 　├─ 再流入     → 新リードをアーカイブ・既存リード/取引先責任者の備考追記・Slack通知
 　├─ いたずら   → Status=アーカイブ・first_touchpoint__c更新
 　├─ 逆営業     → Status=アーカイブ・first_touchpoint__c更新（未実装）
@@ -80,7 +80,9 @@ sf project deploy start --source-dir force-app/main/default/classes/LeadFilterSe
 
 #### 重複
 - 新しいリードの`Status = アーカイブ`
+- 既存リードの`IsDuplicate__c = true`をセット
 - 既存リード or 取引先責任者の`Remarks__c`に追記
+- SFフロー「重複リード通知」がSlack通知
 
 追記フォーマット：
 ```
@@ -91,7 +93,7 @@ sf project deploy start --source-dir force-app/main/default/classes/LeadFilterSe
 
 #### 再流入
 - 新しいリードの`Status = アーカイブ`
-- 新リードの`IsReflow__c = true`・`ReflowSourceLeadId__c` に既存リードIDをセット
+- 新リードの`IsReflow__c = true`・`ReflowSourceLeadId__c`に既存リードIDをセット
 - 既存リード or 取引先責任者の`Remarks__c`に追記・`IsReflow__c = true`をセット
 - SFフロー「再流入リード通知」がSlack通知
 
@@ -128,12 +130,13 @@ sf project deploy start --source-dir force-app/main/default/classes/LeadFilterSe
 
 | フィールド | API参照名 | 説明 |
 |-----------|----------|------|
-| 既存顧客フラグ | `IsExistingCustomer__c` | 既存顧客判定時にtrueをセット |
+| 既存顧客 | `IsExistingCustomer__c` | 既存顧客判定時にtrueをセット |
 | 初回流入経路 | `first_touchpoint__c` | いたずら/逆営業時に更新 |
 | 備考 | `Remarks__c` | 重複/再流入時に追記 |
 | 初回流入日 | `LeadSourceDate__c` | 重複/再流入の半年判定に使用 |
 | 再流入あり | `IsReflow__c` | 再流入判定時にtrueをセット |
 | 既存リードID | `ReflowSourceLeadId__c` | 再流入時に既存リードのIDをセット |
+| 重複あり | `IsDuplicate__c` | 重複判定時にtrueをセット |
 | セールス担当 | `User__c` | 取引開始時の所有者 |
 
 ### 取引先責任者オブジェクト
@@ -141,6 +144,7 @@ sf project deploy start --source-dir force-app/main/default/classes/LeadFilterSe
 | フィールド | API参照名 | 説明 |
 |-----------|----------|------|
 | 再流入あり | `IsReflow__c` | 再流入判定時にtrueをセット |
+| 重複あり | `IsDuplicate__c` | 重複判定時にtrueをセット |
 
 ### 契約オブジェクト（Contract__c）
 
@@ -156,6 +160,8 @@ sf project deploy start --source-dir force-app/main/default/classes/LeadFilterSe
 |---------|---------|--------|------|
 | CSリード通知 | リード作成時（`IsExistingCustomer__c = true`） | #CSリードチャンネル | 既存顧客からの問い合わせ通知 |
 | リードのSlack通知 | リード作成時 | 既存チャンネル | MQL通知 |
+| 重複リード通知 | リード更新時（`IsDuplicate__c = true`） | 既存チャンネル | 重複リード通知 |
+| 重複リード通知（取引先責任者） | 取引先責任者更新時（`IsDuplicate__c = true`） | 既存チャンネル | 取引先責任者ありの重複通知 |
 | 再流入リード通知 | リード更新時（`IsReflow__c = true`） | 既存チャンネル | 既存リードありの再流入通知 |
 | 再流入リード通知（取引先責任者） | 取引先責任者更新時（`IsReflow__c = true`） | 既存チャンネル | 取引先責任者ありの再流入通知 |
 
