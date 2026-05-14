@@ -79,7 +79,7 @@ public class LeadTriggerHandlerTest {
         insert acc;
 
         Opportunity opp = new Opportunity(
-            Name = 'テスト商談',
+            Name      = 'テスト商談',
             AccountId = acc.Id,
             StageName = 'Prospecting',
             CloseDate = Date.today().addMonths(1)
@@ -87,15 +87,15 @@ public class LeadTriggerHandlerTest {
         insert opp;
 
         Contract__c contract = new Contract__c(
-            AccountId__c = acc.Id,
+            AccountId__c        = acc.Id,
             first_oppotunity__c = opp.Id
         );
         insert contract;
 
         Contact contact = new Contact(
-            LastName = '既存顧客',
+            LastName  = '既存顧客',
             AccountId = acc.Id,
-            Email = 'existing@example.com'
+            Email     = 'existing@example.com'
         );
         insert contact;
 
@@ -112,5 +112,47 @@ public class LeadTriggerHandlerTest {
 
         Lead result = [SELECT IsExistingCustomer__c FROM Lead WHERE Id = :lead.Id];
         System.assertEquals(true, result.IsExistingCustomer__c, '既存顧客フラグがtrueであること');
+    }
+
+    @isTest
+    static void testAfterInsert_duplicateLead() {
+        Test.setMock(HttpCalloutMock.class, new MockHttpResponse());
+
+        User adminUser = [
+            SELECT Id FROM User
+            WHERE Name = 'Widsley Admin'
+            AND IsActive = true
+            LIMIT 1
+        ];
+
+        Lead existing = new Lead(
+            LastName          = '既存重複',
+            Company           = 'テスト会社',
+            Email             = 'duplicate@example.com',
+            Phone             = '000',
+            LeadSourceDate__c = Date.today().addMonths(-3),
+            User__c           = adminUser.Id
+        );
+        insert existing;
+
+        Lead newLead = new Lead(
+            LastName          = '新規重複',
+            Company           = 'テスト会社',
+            Email             = 'duplicate@example.com',
+            Phone             = '09011112222',
+            LeadSourceDate__c = Date.today(),
+            User__c           = adminUser.Id
+        );
+        Database.DMLOptions dml = new Database.DMLOptions();
+        dml.duplicateRuleHeader.allowSave = true;
+        Test.startTest();
+        Database.insert(newLead, dml);
+        Test.stopTest();
+
+        Lead existingResult = [SELECT IsDuplicate__c FROM Lead WHERE Id = :existing.Id];
+        System.assertEquals(true, existingResult.IsDuplicate__c, '既存リードに重複フラグがセットされていること');
+
+        Lead newResult = [SELECT Status FROM Lead WHERE Id = :newLead.Id];
+        System.assertEquals('アーカイブ', newResult.Status, '新リードがアーカイブになっていること');
     }
 }

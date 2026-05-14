@@ -37,6 +37,9 @@ public class LeadTriggerHandler {
                         updatedLead.ReflowSourceLeadId__c = existingLead.Id;
                         existingToUpdate.IsReflow__c = true;
                     }
+                    if (isDuplicate) {
+                        existingToUpdate.IsDuplicate__c = true;
+                    }
                     leadsToUpdate.add(existingToUpdate);
                 } else {
                     Contact existingContact = (Contact) dupResult.get('existingContact');
@@ -45,6 +48,9 @@ public class LeadTriggerHandler {
                         LeadFilterService.appendRemarks(contactToUpdate, label, lead);
                         if (isReflow) {
                             contactToUpdate.IsReflow__c = true;
+                        }
+                        if (isDuplicate) {
+                            contactToUpdate.IsDuplicate__c = true;
                         }
                         contactsToUpdate.add(contactToUpdate);
                     }
