@@ -2,6 +2,7 @@ public class LeadTriggerHandler {
 
     public static void afterInsert(List<Lead> newLeads) {
         List<Lead> leadsToUpdate = new List<Lead>();
+        List<Contact> contactsToUpdate = new List<Contact>();
 
         for (Lead lead : newLeads) {
             Lead updatedLead = new Lead(Id = lead.Id);
@@ -23,13 +24,30 @@ public class LeadTriggerHandler {
             if (isDuplicate || isReflow) {
                 String label = isDuplicate ? '重複' : '再流入';
                 updatedLead.Status = 'アーカイブ';
+                if (isReflow) {
+                    updatedLead.IsReflow__c = true;
+                }
                 needsUpdate = true;
 
                 Lead existingLead = (Lead) dupResult.get('existingLead');
                 if (existingLead != null) {
                     Lead existingToUpdate = new Lead(Id = existingLead.Id);
-                    LeadFilterService.appendRemarks(existingToUpdate, label);
+                    LeadFilterService.appendRemarks(existingToUpdate, label, lead);
+                    if (isReflow) {
+                        updatedLead.ReflowSourceLeadId__c = existingLead.Id;
+                        existingToUpdate.IsReflow__c = true;
+                    }
                     leadsToUpdate.add(existingToUpdate);
+                } else {
+                    Contact existingContact = (Contact) dupResult.get('existingContact');
+                    if (existingContact != null) {
+                        Contact contactToUpdate = new Contact(Id = existingContact.Id);
+                        LeadFilterService.appendRemarks(contactToUpdate, label, lead);
+                        if (isReflow) {
+                            contactToUpdate.IsReflow__c = true;
+                        }
+                        contactsToUpdate.add(contactToUpdate);
+                    }
                 }
                 leadsToUpdate.add(updatedLead);
                 continue;
@@ -43,6 +61,9 @@ public class LeadTriggerHandler {
                 continue;
             }
 
+            // ─── ⑥ 有効リード → 取引開始 ───────────────
+            LeadConvertService.convertLead(lead);
+
             if (needsUpdate) {
                 leadsToUpdate.add(updatedLead);
             }
@@ -50,6 +71,9 @@ public class LeadTriggerHandler {
 
         if (!leadsToUpdate.isEmpty()) {
             update leadsToUpdate;
+        }
+        if (!contactsToUpdate.isEmpty()) {
+            update contactsToUpdate;
         }
     }
 }

@@ -13,11 +13,11 @@ LeadTrigger（after insert）
 　↓
 LeadTriggerHandler → LeadFilterService
 　├─ 既存顧客   → IsExistingCustomer__c=true → SFフローでCSへSlack通知
-　├─ 重複       → 新リードをアーカイブ・既存リード備考追記
-　├─ 再流入     → 新リードをアーカイブ・既存リード備考追記
+　├─ 重複       → 新リードをアーカイブ・既存リード/取引先責任者の備考追記
+　├─ 再流入     → 新リードをアーカイブ・既存リード/取引先責任者の備考追記・Slack通知
 　├─ いたずら   → Status=アーカイブ・first_touchpoint__c更新
 　├─ 逆営業     → Status=アーカイブ・first_touchpoint__c更新（未実装）
-　└─ 有効リード → 変更なし（既存SFフローでMQL通知）
+　└─ 有効リード → 自動取引開始（取引先・取引先責任者を新規作成）・MQL通知
 ```
 
 ## ディレクトリ構成
@@ -30,6 +30,8 @@ widsley-sf/
 │   │   ├── LeadFilterServiceTest.cls    ✅ テスト
 │   │   ├── LeadTriggerHandler.cls       ✅ トリガーハンドラ
 │   │   ├── LeadTriggerHandlerTest.cls   ✅ テスト
+│   │   ├── LeadConvertService.cls       ✅ 有効リード自動取引開始
+│   │   ├── LeadConvertServiceTest.cls   ✅ テスト
 │   │   └── MockHttpResponse.cls        ✅ テスト用モック
 │   └── triggers/
 │       └── LeadTrigger.trigger          ✅ リード登録時に発火
@@ -52,17 +54,7 @@ sf org login web --alias widsley-prod
 ### 3. ソースコードをSFに反映
 
 ```bash
-sf project deploy start \
-  --source-dir force-app/main/default/classes/LeadFilterService.cls \
-  --source-dir force-app/main/default/classes/LeadFilterServiceTest.cls \
-  --source-dir force-app/main/default/classes/LeadTriggerHandler.cls \
-  --source-dir force-app/main/default/classes/LeadTriggerHandlerTest.cls \
-  --source-dir force-app/main/default/classes/MockHttpResponse.cls \
-  --source-dir force-app/main/default/triggers/LeadTrigger.trigger \
-  --target-org widsley-prod \
-  --test-level RunSpecifiedTests \
-  --tests LeadFilterServiceTest \
-  --tests LeadTriggerHandlerTest
+sf project deploy start --source-dir force-app/main/default/classes/LeadFilterService.cls --source-dir force-app/main/default/classes/LeadFilterServiceTest.cls --source-dir force-app/main/default/classes/LeadTriggerHandler.cls --source-dir force-app/main/default/classes/LeadTriggerHandlerTest.cls --source-dir force-app/main/default/classes/LeadConvertService.cls --source-dir force-app/main/default/classes/LeadConvertServiceTest.cls --source-dir force-app/main/default/classes/MockHttpResponse.cls --source-dir force-app/main/default/triggers/LeadTrigger.trigger --target-org widsley-prod --test-level RunSpecifiedTests --tests LeadFilterServiceTest --tests LeadTriggerHandlerTest --tests LeadConvertServiceTest
 ```
 
 ## 判定ロジック
@@ -86,9 +78,29 @@ sf project deploy start \
 - `IsExistingCustomer__c = true` をセット
 - SFフロー「CSリード通知」が`#CSリードチャンネル`にSlack通知
 
-#### 重複 / 再流入
+#### 重複
 - 新しいリードの`Status = アーカイブ`
-- 既存リードの`Remarks__c`に追記（例：`重複より再問い合わせあり（2026-05-13）`）
+- 既存リード or 取引先責任者の`Remarks__c`に追記
+
+追記フォーマット：
+```
+{新リードのDescription}
+{新リードのweb__c}
+{first_touchpoint__c}より重複問い合わせあり（日付）
+```
+
+#### 再流入
+- 新しいリードの`Status = アーカイブ`
+- 新リードの`IsReflow__c = true`・`ReflowSourceLeadId__c` に既存リードIDをセット
+- 既存リード or 取引先責任者の`Remarks__c`に追記・`IsReflow__c = true`をセット
+- SFフロー「再流入リード通知」がSlack通知
+
+追記フォーマット：
+```
+{新リードのDescription}
+{新リードのweb__c}
+{first_touchpoint__c}より再流入問い合わせあり（日付）
+```
 
 #### いたずら
 - `Status = アーカイブ`
@@ -102,7 +114,13 @@ sf project deploy start \
 | その他 | `逆営業と無効` |
 
 #### 有効リード
-- 変更なし（既存SFフロー「リードのSlack通知」でMQL通知）
+- `LeadConvertService`により自動取引開始
+  - 取引先（Account）：新規作成
+  - 取引先責任者（Contact）：新規作成
+  - 商談：作成しない
+  - 取引開始状況：`商談化`
+  - 所有者：Widsley Admin
+- 既存SFフロー「リードのSlack通知」でMQL通知
 
 ## SFカスタムフィールド
 
@@ -114,6 +132,15 @@ sf project deploy start \
 | 初回流入経路 | `first_touchpoint__c` | いたずら/逆営業時に更新 |
 | 備考 | `Remarks__c` | 重複/再流入時に追記 |
 | 初回流入日 | `LeadSourceDate__c` | 重複/再流入の半年判定に使用 |
+| 再流入あり | `IsReflow__c` | 再流入判定時にtrueをセット |
+| 既存リードID | `ReflowSourceLeadId__c` | 再流入時に既存リードのIDをセット |
+| セールス担当 | `User__c` | 取引開始時の所有者 |
+
+### 取引先責任者オブジェクト
+
+| フィールド | API参照名 | 説明 |
+|-----------|----------|------|
+| 再流入あり | `IsReflow__c` | 再流入判定時にtrueをセット |
 
 ### 契約オブジェクト（Contract__c）
 
@@ -121,12 +148,16 @@ sf project deploy start \
 |-----------|----------|------|
 | 取引先名 | `AccountId__c` | 取引先との紐づけ |
 | 解約ステータス | `churn_status__c` | 空欄=成約中と判定 |
+| 元商談 | `first_oppotunity__c` | 紐づく商談 |
 
 ## SFフロー
 
-| フロー名 | トリガー | 説明 |
-|---------|---------|------|
-| CSリード通知 | リード作成時（`IsExistingCustomer__c = true`） | #CSリードチャンネルへ通知 |
+| フロー名 | トリガー | 通知先 | 説明 |
+|---------|---------|--------|------|
+| CSリード通知 | リード作成時（`IsExistingCustomer__c = true`） | #CSリードチャンネル | 既存顧客からの問い合わせ通知 |
+| リードのSlack通知 | リード作成時 | 既存チャンネル | MQL通知 |
+| 再流入リード通知 | リード更新時（`IsReflow__c = true`） | 既存チャンネル | 既存リードありの再流入通知 |
+| 再流入リード通知（取引先責任者） | 取引先責任者更新時（`IsReflow__c = true`） | 既存チャンネル | 取引先責任者ありの再流入通知 |
 
 ## 今後の実装予定
 

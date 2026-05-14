@@ -85,39 +85,53 @@ public class LeadFilterService {
     }
 
     // ─── 重複/再流入時の備考追記 ─────────────────────
-    public static void appendRemarks(Lead lead, String label) {
+    public static void appendRemarks(SObject record, String label, Lead newLead) {
         String today = String.valueOf(Date.today());
-        String newEntry = label + 'より再問い合わせあり（' + today + '）';
-        if (String.isBlank(lead.Remarks__c)) {
-            lead.Remarks__c = newEntry;
+        String touchpoint = String.isBlank(newLead.first_touchpoint__c) ? 'ホームページ' : newLead.first_touchpoint__c;
+        String suffix = label == '重複'
+            ? touchpoint + 'より重複問い合わせあり（' + today + '）'
+            : touchpoint + 'より再流入問い合わせあり（' + today + '）';
+    
+        String newEntry = '';
+        if (!String.isBlank(newLead.Description)) newEntry += newLead.Description + '\n';
+        if (!String.isBlank(newLead.web__c))      newEntry += newLead.web__c + '\n';
+        newEntry += suffix;
+    
+        String currentRemarks = (String) record.get('Remarks__c');
+        if (String.isBlank(currentRemarks)) {
+            record.put('Remarks__c', newEntry);
         } else {
-            lead.Remarks__c = lead.Remarks__c + '\n' + newEntry;
+            record.put('Remarks__c', currentRemarks + '\n' + newEntry);
         }
     }
+
+    // ─── 既存顧客判定 ───────────────────────────────
     public static Boolean isExistingCustomer(Lead lead) {
         if (String.isBlank(lead.Email) && String.isBlank(lead.Phone)) {
             return false;
         }
-    
-        // メール or 電話で取引先責任者を照合
+
         List<Contact> contacts = [
             SELECT Id, AccountId
             FROM Contact
             WHERE (Email = :lead.Email OR Phone = :lead.Phone)
             LIMIT 1
         ];
-    
+
         if (contacts.isEmpty()) return false;
-    
-        // 取引先責任者の取引先IDで契約を検索し、解約ステータスが空欄か確認
+
         List<Contract__c> contracts = [
             SELECT Id, churn_status__c
             FROM Contract__c
             WHERE AccountId__c = :contacts[0].AccountId
-            AND churn_status__c = null
+            AND churn_status__c = ''
             LIMIT 1
         ];
-    
+
         return !contracts.isEmpty();
+    }
+
+    public static void markAsExistingCustomer(Lead lead) {
+        lead.IsExistingCustomer__c = true;
     }
 }
